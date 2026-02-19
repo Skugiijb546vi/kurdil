@@ -1,30 +1,56 @@
-name: ناردنی ڤیدیۆ بۆ هۆگینگ فەیس
-
+name: Direct_To_HuggingFace_Fast
 on:
   workflow_dispatch:
     inputs:
       video_url:
-        description: 'لینکی ڕاستەوخۆی MP4 لێرە دابنێ'
+        description: 'Direct Link (Seedr)'
         required: true
       file_name:
-        description: 'ناوی فیلمەکە (بۆ نموونە: movie1.mp4)'
+        description: 'ناوی فایلەکە لەناو Hugging Face'
         required: true
-        default: 'video.mp4'
+        default: 'video_from_seedr.mp4'
 
 jobs:
-  transfer:
+  upload_job:
     runs-on: ubuntu-latest
     steps:
-      - name: داگرتنی ڤیدیۆ لە لینکەکەوە
+      - name: 🏗️ Setup Tools
         run: |
-          curl -L -o temp_video.mp4 "${{ github.event.inputs.video_url }}"
+          sudo apt-get update -qq
+          sudo apt-get install -y aria2 -qq
+          pip install -q huggingface_hub
 
-      - name: ئامادەکردنی کتێبخانەی Hugging Face
-        run: pip install huggingface_hub
+      - name: ⬇️ Fast Download
+        run: |
+          # بەکارهێنانی aria2 بۆ داگرتنی خێرا ڕێک وەک کۆدەکەی خۆت
+          aria2c --max-connection-per-server=16 --split=16 -o "video.mp4" "${{ github.event.inputs.video_url }}"
 
-      - name: ناردن بۆ Hugging Face
+      - name: 🚀 Upload to Hugging Face
         env:
-          HF_TOKEN: "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"
-          REPO_ID: "Sarkoakram/sarko761"
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
-          python -c "from huggingface_hub import HfApi; api = HfApi(); api.upload_file(path_or_fileobj='temp_video.mp4', path_in_repo='${{ github.event.inputs.file_name }}', repo_id='${{ env.REPO_ID }}', repo_type='dataset', token='${{ env.HF_TOKEN }}')"
+          python3 -c "
+          import os
+          from huggingface_hub import HfApi
+          
+          # وەرگرتنی تۆکن لە سێتیتنگس
+          token = os.getenv('HF_TOKEN')
+          if not token:
+              print('❌ Error: HF_TOKEN is missing in GitHub Secrets!')
+              exit(1)
+              
+          api = HfApi()
+          repo_id = 'Sarkoakram/sarko761'
+          file_name = '${{ github.event.inputs.file_name }}'
+          
+          print(f'📤 Sending to Hugging Face: {file_name}...')
+          
+          api.upload_file(
+              path_or_fileobj='video.mp4',
+              path_in_repo=file_name,
+              repo_id=repo_id,
+              repo_type='dataset',
+              token=token
+          )
+          print('✅ Done! Check your Hugging Face repo.')
+          "
