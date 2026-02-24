@@ -40,7 +40,7 @@ jobs:
               exit(1)
               
           api = HfApi()
-          repo_id = 'Sarkoakram/sarko761'
+          repo_id = 'Sarko57/sarko987'
           file_name = '${{ github.event.inputs.file_name }}'
           
           print(f'📤 Sending to Hugging Face: {file_name}...')
